@@ -11,7 +11,6 @@
 #define IMAX		(5000)	/* max # of iterations	     */
 
 /* global variables */
-
 unsigned long funevals = 0; //edw prostasia
 
 
@@ -20,9 +19,11 @@ double f(double *x, int n)
 {
     double fv;
     int i;
+	//#pragma omp atomic
+	funevals++; 
 
-	funevals++;
     fv = 0.0;
+	//#pragma omp parallel for shared(i)
     for (i=0; i<n-1; i++)   /* rosenbrock */
         fv = fv + 100.0*pow((x[i+1]-x[i]*x[i]),2) + pow((x[i]-1.0),2);
 
@@ -179,7 +180,7 @@ int main(int argc, char *argv[])
 	double best_pt[MAXVARS];
 	int best_trial = -1;
 	int best_jj = -1;
-
+//#pragma omp parallel for  shared(i)
 	for (i = 0; i < MAXVARS; i++) best_pt[i] = 0.0;
 
 	ntrials = 128*1024;	/* number of trials */
