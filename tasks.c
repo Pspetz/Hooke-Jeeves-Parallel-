@@ -145,6 +145,7 @@
 #define IMAX		(5000)	/* max # of iterations	     */
 
 /* global variables */
+
 unsigned long funevals = 0;
 
 
@@ -153,13 +154,15 @@ double f(double *x, int n)
 {
     double fv;
     int i;
-
 	funevals++;
     fv = 0.0;
+    //#pragma omp single
     for (i=0; i<n-1; i++)   /* rosenbrock */
         fv = fv + 100.0*pow((x[i+1]-x[i]*x[i]),2) + pow((x[i]-1.0),2);
-
+	
     return fv;
+
+
 }
 /* given a point, look for a better one nearby, one coord at a time */
 double best_nearby(double delta[MAXVARS], double point[MAXVARS], double prevbest, int nvars)
@@ -167,8 +170,8 @@ double best_nearby(double delta[MAXVARS], double point[MAXVARS], double prevbest
 	double z[MAXVARS];
 	double minf, ftmp;
 	int i;
-	minf = prevbest;
 
+	minf = prevbest;
 	for (i = 0; i < nvars; i++)
 		z[i] = point[i];
 
@@ -207,20 +210,23 @@ int hooke(int nvars, double startpt[MAXVARS], double endpt[MAXVARS], double rho,
 	int iters;
 	int iadj;
 	#pragma omp parallel num_threads(4) shared(i,nvars)
+	#pragma omp single nowait 
 	for (i = 0; i < nvars; i++) {
 		newx[i] = xbefore[i] = startpt[i];
 		delta[i] = fabs(startpt[i] * rho);
 		if (delta[i] == 0.0)
-
+        #pragma omp task firstprivate(delta,i) 
 			delta[i] = rho;
-		
+		#pragma omp taskwait 
 	} 
+	
 
 	steplength = rho;
 	fbefore = f(newx, nvars);
 	newf = fbefore;
 
     #pragma omp parallel num_threads(4) shared(iters,iadj)
+	#pragma omp task 
 	for( iters=0  ,iadj=0;  (iters< itermax)  && (steplength > epsilon);  iters++ , iadj++) {     
 		//iters++;
 		//iadj++;
@@ -315,8 +321,8 @@ int main(int argc, char *argv[])
 
 	t0 = get_wtime();
 	#pragma omp parallel
-#pragma omp single
-#pragma omp taskloop num_tasks(20)
+    //#pragma omp single
+    #pragma omp task //loop num_tasks(20)
 	for (trial = 0; trial < ntrials; trial++) {
 		/* starting guess for rosenbrock test function, search space in [-4, 4) */
 		for (i = 0; i < nvars; i++) {
