@@ -11,6 +11,7 @@
 #define IMAX		(5000)	/* max # of iterations	     */
 
 /* global variables */
+
 unsigned long funevals = 0; //edw prostasia
 
 
@@ -19,16 +20,18 @@ double f(double *x, int n)
 {
     double fv;
     int i;
-	//#pragma omp atomic
-	funevals++; 
-
+	funevals++;
     fv = 0.0;
-	//#pragma omp parallel for shared(i)
     for (i=0; i<n-1; i++)   /* rosenbrock */
         fv = fv + 100.0*pow((x[i+1]-x[i]*x[i]),2) + pow((x[i]-1.0),2);
 
     return fv;
+    
+  
+   
 }
+
+
 
 /* given a point, look for a better one nearby, one coord at a time */
 double best_nearby(double delta[MAXVARS], double point[MAXVARS], double prevbest, int nvars)
@@ -37,10 +40,8 @@ double best_nearby(double delta[MAXVARS], double point[MAXVARS], double prevbest
 	double minf, ftmp;
 	int i;
 	minf = prevbest;
-	//#pragma omp parallel  for ordered shared(i)
 	for (i = 0; i < nvars; i++)
 		z[i] = point[i];
-	//#pragma omp parallel  for ordered shared(i)
 	for (i = 0; i < nvars; i++) {
 		z[i] = point[i] + delta[i];
 		ftmp = f(z, nvars);
@@ -56,7 +57,7 @@ double best_nearby(double delta[MAXVARS], double point[MAXVARS], double prevbest
 				z[i] = point[i];
 		}
 	}
-	//#pragma omp parallel  for ordered shared(i)
+	
 	for (i = 0; i < nvars; i++)
 		point[i] = z[i];
 
@@ -71,13 +72,12 @@ int hooke(int nvars, double startpt[MAXVARS], double endpt[MAXVARS], double rho,
 	double xbefore[MAXVARS], newx[MAXVARS];
 	int i, j, keep;
 	int iters, iadj;
-	#pragma omp parallel num_threads(4) shared(i,nvars)
-	//#pragma omp for ordered reduction(+:nvars)
+	#pragma omp parallel for num_threads(4) shared(i,nvars)
+	
 	for (i = 0; i < nvars; i++) {
 		newx[i] = xbefore[i] = startpt[i];
 		delta[i] = fabs(startpt[i] * rho);
 		if (delta[i] == 0.0)
-		        //#pragma omp ordered
 			delta[i] = rho;
 	
 			
@@ -97,7 +97,7 @@ int hooke(int nvars, double startpt[MAXVARS], double endpt[MAXVARS], double rho,
 			printf("   x[%2d] = %.4le\n", j, xbefore[j]);
 #endif
 		/* find best   new point, one coord at a time */
-		    //#pragma omp single	
+		    	
 		for (i = 0; i < nvars; i++) {
 			newx[i] = xbefore[i];
 		}
@@ -106,7 +106,7 @@ int hooke(int nvars, double startpt[MAXVARS], double endpt[MAXVARS], double rho,
 		keep = 1;
 		while ((newf < fbefore) && (keep == 1)) {
 			iadj = 0;
-			//#pragma omp parallel for 
+			
 			for (i = 0; i < nvars; i++) {
 				/* firstly, arrange the sign of delta[] */
 				if (newx[i] <= xbefore[i])
@@ -118,7 +118,7 @@ int hooke(int nvars, double startpt[MAXVARS], double endpt[MAXVARS], double rho,
 				xbefore[i] = newx[i];
 				newx[i] = newx[i] + newx[i] - tmp;
 			}
-			//#pragma omp barrier
+			
 			fbefore = newf;
 			newf = best_nearby(delta, newx, fbefore, nvars);
 			/* if the further (optimistic) move was bad.... */
@@ -130,7 +130,7 @@ int hooke(int nvars, double startpt[MAXVARS], double endpt[MAXVARS], double rho,
 			/* displacements; beware of roundoff errors that */
 			/* might cause newf < fbefore */
 			keep = 0;
-			 //#pragma omp parallel
+			
 			for (i = 0; i < nvars; i++) {
 				keep = 1;
 				if (fabs(newx[i] - xbefore[i]) > (0.5 * fabs(delta[i])))
@@ -139,7 +139,7 @@ int hooke(int nvars, double startpt[MAXVARS], double endpt[MAXVARS], double rho,
 					keep = 0;
 			}
 		}
-		//#pragma omp barrier
+		
 		if ((steplength >= epsilon) && (newf >= fbefore)) {
 			steplength = steplength * rho;
 			for (i = 0; i < nvars; i++) {
@@ -147,7 +147,7 @@ int hooke(int nvars, double startpt[MAXVARS], double endpt[MAXVARS], double rho,
 			}
 		}
 	}
-    //#pragma omp parallel for
+    #pragma omp parallel for reduction(+:iters) shared(i)
 	for (i = 0; i < nvars; i++)
 		endpt[i] = xbefore[i];
 
@@ -181,7 +181,7 @@ int main(int argc, char *argv[])
 	double best_pt[MAXVARS];
 	int best_trial = -1;
 	int best_jj = -1;
-//#pragma omp parallel for  shared(i)
+
 	for (i = 0; i < MAXVARS; i++) best_pt[i] = 0.0;
 
 	ntrials = 128*1024;	/* number of trials */
@@ -215,13 +215,14 @@ int main(int argc, char *argv[])
 				best_pt[i] = endpt[i];
 		}
 	}
+	
 	t1 = get_wtime();
-
 	printf("\n\nFINAL RESULTS:\n");
 	printf("Elapsed time = %.3lf s\n", t1-t0);
 	printf("Total number of trials = %d\n", ntrials);
 	printf("Total number of function evaluations = %ld\n", funevals);
 	printf("Best result at trial %d used %d iterations, and returned\n", best_trial, best_jj);
+ 
 	for (i = 0; i < nvars; i++) {
 		printf("x[%3d] = %15.7le \n", i, best_pt[i]);
 	}
