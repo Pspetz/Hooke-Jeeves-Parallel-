@@ -1,4 +1,4 @@
-//mpicc -o multistart_hooke_seq multistart_hooke_seq.c -lm
+
 
 #include <stdio.h>
 #include <stdlib.h>
