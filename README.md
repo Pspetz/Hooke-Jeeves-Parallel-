@@ -1,8 +1,8 @@
 # Parallel-
- parallel implementation with OpenMP
- parallel implementation with OpenMP tasks
- parallel implementation with MPI
- hybrid MPI+OpenMP parallel implementation
+- parallel implementation with OpenMP
+- parallel implementation with OpenMP tasks
+- parallel implementation with MPI
+- hybrid MPI+OpenMP parallel implementation
 
 gcc/mpicc compilers 
 
